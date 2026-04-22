@@ -23,3 +23,15 @@
     width: 100%;
     max-width: 150px;
 }
+
+#retry {
+    display: none; /* Hidden by default */
+    background-color: #ffcccc;
+    color: #cc0000;
+    padding: 10px;
+    border: 1px solid #cc0000;
+    cursor: pointer;
+    text-align: center;
+    border-radius: 5px;
+    margin-top: 10px;
+}
