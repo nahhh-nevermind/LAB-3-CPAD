@@ -1,7 +1,6 @@
 const search = document.getElementById("searchinput")
 const button = document.querySelector("button")
 const retry = document.getElementById("retry")
-
 const weatherCodes = {
     0: { desc: "Clear Sky", icon: "☀️" },
     1: { desc: "Mainly Clear", icon: "🌤️" },
@@ -12,25 +11,29 @@ const weatherCodes = {
 button.addEventListener("click", async () => {
     const city = search.value;
     if (city) {
-        await weatherData(city); // Call the function
+        await weatherData(city);
     }
 });
 
 async function weatherData(city){
+    let timezone;
+
     try {
-        const geoURL = `https://geocoding-api.open-meteo.com/v1/search?name=${city}`
-        const geoResponse = await fetch(geoURL)
+        const geoURL = `https://geocoding-api.open-meteo.com/v1/search?name=${city}`;
+        const geoResponse = await fetch(geoURL);
         const geoData = await geoResponse.json();
 
         if (!geoData.results) {
-            alert("City not found !")
+            alert("City not found !");
             return;
         }
 
-        const { latitude, longitude, name } = geoData.results[0];
+        const res = geoData.results[0];
+        const { latitude, longitude, name } = res;
+        timezone = res.timezone;
 
-        const currWeatherURL = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&hourly=temperature_2m,relativehumidity_2m,windspeed_10m&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto`
-        const currWeatherResponse = await fetch(currWeatherURL)
+        const currWeatherURL = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&hourly=temperature_2m,relativehumidity_2m,windspeed_10m&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto`;
+        const currWeatherResponse = await fetch(currWeatherURL);
         const currWeatherData = await currWeatherResponse.json();
 
         updateUI(currWeatherData, name)
@@ -42,6 +45,10 @@ async function weatherData(city){
         retryDiv.textContent = "Network Error. Click here to retry.";
 
         document.querySelectorAll(".skeleton").forEach(el => el.classList.remove("skeleton"));
+    }
+
+    if (timezone) {
+        LocalTime(timezone);
     }
 }
 
@@ -88,4 +95,24 @@ function updateUI(wData, name){
 
         card.classList.remove("skeleton");
     });
+}
+
+async function LocalTime(timezone){
+    return $.getJSON(`https://worldtimeapi.org/api/timezone/${timezone}`)
+
+    .done(function(t){
+        const timeString = t.datetime.split("T")[1].substring(0,5);
+        $("#time").text(`Local Time : ${timeString} (${timezone})`);
+        $("#time").removeClass("skeleton");
+        
+    })
+    .fail(function(){
+        const now = new Date();
+        const browsertime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+        $("#time").text(`Browser Local Time : ${browsertime}`);
+        $("#time").removeClass("skeleton");
+    })
+    .always(function(){
+        console.log("Time Request Finished : " + new Date());
+    })
 }
