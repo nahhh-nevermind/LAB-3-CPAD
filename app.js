@@ -20,6 +20,14 @@ async function weatherData(city){
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
+    retry.style.display = "none";
+    document.getElementById("time").textContent = "";
+
+    const pulseTargets = ["city", "temp", "weather", "humidity", "wind", "time"];
+    pulseTargets.forEach(id => document.getElementById(id).classList.add("skeleton"));
+
+    document.querySelectorAll("#forecast div").forEach(el => el.classList.add("skeleton"));
+
     try {
         const geoURL = `https://geocoding-api.open-meteo.com/v1/search?name=${city}`;
         const geoResponse = await fetch(geoURL, {signal: controller.signal});
@@ -33,7 +41,7 @@ async function weatherData(city){
 
         const res = geoData.results[0];
         const { latitude, longitude, name } = res;
-        timezone = res.timezone;
+        timezone = res.timezone || "UTC";
 
         const currWeatherURL = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&hourly=temperature_2m,relativehumidity_2m,windspeed_10m&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto`;
         const currWeatherResponse = await fetch(currWeatherURL, {signal: controller.signal});
@@ -99,8 +107,8 @@ function updateUI(wData, name){
         const dayLookup = weatherCodes[dayCode] || { icon: "☀️" };
 
         card.querySelector(".weathericon").textContent = dayLookup.icon;
-        card.querySelector(".hightemp").textContent = `H: ${wData.daily.temperature_2m_max[i]}°C`;
-        card.querySelector(".lowtemp").textContent = `L: ${wData.daily.temperature_2m_min[i]}°C`;
+        card.querySelector(".hightemp").textContent = `High: ${wData.daily.temperature_2m_max[i]}°C`;
+        card.querySelector(".lowtemp").textContent = `Low: ${wData.daily.temperature_2m_min[i]}°C`;
 
         card.classList.remove("skeleton");
     });
@@ -109,13 +117,13 @@ function updateUI(wData, name){
 async function LocalTime(timezone){
 
     $.ajax({
-        url: `https://worldtimeapi.org/api/timezone/${timezone}`,
+        url: `https://timeapi.io/api/Time/current/zone?timeZone=${timezone}`,
         dataType: 'json',
         timeout: 5000,
     })
     .done(function(t){
-        const timeString = t.datetime.split("T")[1].substring(0,5);
-        $("#time").text(`Local Time : ${timeString} (${timezone})`);
+        const cleanTime = t.time;
+        $("#time").text(`Local Time : ${cleanTime} (${timezone})`);
         $("#time").removeClass("skeleton");
         
     })
@@ -129,6 +137,6 @@ async function LocalTime(timezone){
         $("#time").removeClass("skeleton");
     })
     .always(function(){
-        console.log("Time Request Finished : " + new Date());
+        console.log("Time Request Finished : " + new Date().toISOString());
     })
 }
