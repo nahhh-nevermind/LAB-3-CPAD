@@ -17,14 +17,17 @@ button.addEventListener("click", async () => {
 
 async function weatherData(city){
     let timezone;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
 
     try {
         const geoURL = `https://geocoding-api.open-meteo.com/v1/search?name=${city}`;
-        const geoResponse = await fetch(geoURL);
+        const geoResponse = await fetch(geoURL, {signal: controller.signal});
         const geoData = await geoResponse.json();
 
         if (!geoData.results) {
             alert("City not found !");
+            clearTimeout(timeoutId);
             return;
         }
 
@@ -33,16 +36,22 @@ async function weatherData(city){
         timezone = res.timezone;
 
         const currWeatherURL = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&hourly=temperature_2m,relativehumidity_2m,windspeed_10m&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto`;
-        const currWeatherResponse = await fetch(currWeatherURL);
+        const currWeatherResponse = await fetch(currWeatherURL, {signal: controller.signal});
         const currWeatherData = await currWeatherResponse.json();
 
         updateUI(currWeatherData, name)
+        clearTimeout(timeoutId);
     } catch (error) {
-        console.error("Fetch failed:", error);
-
         const retryDiv = document.getElementById("retry");
-        retryDiv.style.display = "block";
-        retryDiv.textContent = "Network Error. Click here to retry.";
+        retry.style.display = "block";
+
+        if(error.name === 'AbortError'){
+            console.error("Request timed out after 10 seconds");
+            retry.textContent = "Request timed out. Please try again "
+        } else {
+            console.error("Fetch failed:", error);
+            retryDiv.textContent = "Network Error. Click here to retry.";
+        }
 
         document.querySelectorAll(".skeleton").forEach(el => el.classList.remove("skeleton"));
     }
@@ -98,15 +107,22 @@ function updateUI(wData, name){
 }
 
 async function LocalTime(timezone){
-    return $.getJSON(`https://worldtimeapi.org/api/timezone/${timezone}`)
 
+    $.ajax({
+        url: `https://worldtimeapi.org/api/timezone/${timezone}`,
+        dataType: 'json',
+        timeout: 5000,
+    })
     .done(function(t){
         const timeString = t.datetime.split("T")[1].substring(0,5);
         $("#time").text(`Local Time : ${timeString} (${timezone})`);
         $("#time").removeClass("skeleton");
         
     })
-    .fail(function(){
+    .fail(function(jqXHR, textStatus){
+        if(textStatus === "timeout"){
+            console.log("Time API timed out");
+        }
         const now = new Date();
         const browsertime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
         $("#time").text(`Browser Local Time : ${browsertime}`);
