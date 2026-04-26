@@ -117,24 +117,25 @@ function updateUI(wData, name){
 async function LocalTime(timezone){
 
     $.ajax({
-        url: `https://timeapi.io/api/Time/current/zone?timeZone=${timezone}`,
+        url: `https://worldtimeapi.org/api/timezone/${timezone}`,
         dataType: 'json',
         timeout: 5000,
     })
     .done(function(t){
-        const cleanTime = t.time;
+        const timeString = t.datetime.split("T")[1].substring(0, 5);;
         $("#time").text(`Local Time : ${cleanTime} (${timezone})`);
         $("#time").removeClass("skeleton");
         
     })
     .fail(function(jqXHR, textStatus){
-        if(textStatus === "timeout"){
-            console.log("Time API timed out");
-        }
         const now = new Date();
         const browsertime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
         $("#time").text(`Browser Local Time : ${browsertime}`);
         $("#time").removeClass("skeleton");
+
+        if(textStatus === "timeout"){
+            console.log("Time API timed out");
+        }
     })
     .always(function(){
         console.log("Time Request Finished : " + new Date().toISOString());
